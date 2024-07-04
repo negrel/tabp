@@ -19,8 +19,8 @@ func main() {
 			return tabp.Error("format is not a string")
 		}
 
-		args := make([]any, 0, tab.SequenceLen())
-		for i := 2; i < tab.SequenceLen(); i++ {
+		args := make([]any, 0, tab.SeqLen())
+		for i := 2; i < tab.SeqLen(); i++ {
 			args = append(args, tab.Get(i))
 		}
 
@@ -33,8 +33,8 @@ func main() {
 			return tabp.Error("format is not a string")
 		}
 
-		args := make([]any, 0, tab.SequenceLen())
-		for i := 2; i < tab.SequenceLen(); i++ {
+		args := make([]any, 0, tab.SeqLen())
+		for i := 2; i < tab.SeqLen(); i++ {
 			args = append(args, tab.Get(i))
 		}
 
