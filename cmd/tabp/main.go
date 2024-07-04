@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/negrel/tabp/pkg/tabp"
@@ -9,10 +11,6 @@ import (
 
 func main() {
 	parser := tabp.NewParser(os.Stdin)
-	value, err := parser.Parse()
-	if err.Cause != nil {
-		panic(err)
-	}
 
 	env := tabp.NewEnv()
 	env.Defun("sprintf", func(tab *tabp.Table) tabp.Value {
@@ -45,8 +43,25 @@ func main() {
 		return nil
 	})
 
-	value = env.Eval(value)
-	if value != nil {
-		fmt.Println(tabp.Sexpr(value))
+	for {
+		fmt.Print("tabp> ")
+		value, err := parser.Parse()
+		if err.Cause != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+
+			fmt.Fprintln(os.Stderr, err.Error())
+		}
+
+		value = env.Eval(value)
+		if value != nil {
+			if err, isErr := value.(error); isErr {
+				fmt.Fprintln(os.Stderr, err.Error())
+			} else {
+				fmt.Println(tabp.Sexpr(value))
+			}
+		}
 	}
+
 }
