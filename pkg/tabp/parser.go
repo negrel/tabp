@@ -199,6 +199,13 @@ func (p *Parser) parseTable() (*Table, ParseError) {
 		// Skip whitespaces.
 		r, err := p.skipWhile(unicode.IsSpace)
 		if err.Cause != nil {
+			if err.Cause == io.EOF {
+				return nil, ParseError{
+					Cause:    fmt.Errorf("unexpected EOF, table closing parenthesis missing: %w", err),
+					Position: p.cursor,
+				}
+			}
+
 			return nil, err
 		}
 
@@ -329,14 +336,15 @@ func (p *Parser) parseSymbol(r rune) (Symbol, ParseError) {
 
 	if r == '|' {
 		buf, _, err = p.collectBytesWhile(func(r rune) bool {
-			return r != '|'
+			return r != '|' && r != '(' && r != ')'
 		}, buf)
 		if err.Cause != nil {
 			return Symbol(UnsafeString(buf)), err
 		}
+		buf = utf8.AppendRune(buf, '|')
 	} else {
 		buf, _, err = p.collectBytesWhile(func(r rune) bool {
-			return unicode.IsPrint(r) && r != ' '
+			return unicode.IsPrint(r) && r != ' ' && r != '(' && r != ')'
 		}, buf)
 		if err.Cause != nil {
 			return Symbol(UnsafeString(buf)), err
