@@ -25,12 +25,18 @@ func NewEnv() Env {
 	return Env{
 		parent: nil,
 		fun:    map[Symbol]func(*Table) Value{},
+		vars:   map[Symbol]Value{},
 	}
 }
 
 // Defun define a function in the environment.
-func (e *Env) Defun(name string, fn func(*Table) Value) {
-	e.fun[Symbol(name)] = fn
+func (e *Env) Defun(name Symbol, fn func(*Table) Value) {
+	e.fun[name] = fn
+}
+
+// Defvar define a variable in the environment.
+func (e *Env) Defvar(name Symbol, v Value) {
+	e.vars[name] = v
 }
 
 // Eval evaluates the given value within the environment and returns a new value.
@@ -40,26 +46,27 @@ func (e *Env) Eval(v Value) Value {
 	}
 
 	switch value := v.(type) {
+	case Symbol:
+		return e.vars[value]
+
 	case *Table:
-		fnName := value.Get(0)
-		if fnSym, isSymbol := fnName.(Symbol); isSymbol {
+		name := value.Get(0)
+		if fnSym, isSymbol := name.(Symbol); isSymbol {
 			fn, ok := e.fun[fnSym]
 			if !ok {
 				return EvalError{Cause: Error("function not found"), Expr: v}
 			}
 
-			args := Table{}
-			for _, v := range value.kv {
-				val := e.Eval(v.Value)
-				if err, isErr := val.(error); isErr {
-					return EvalError{Cause: err, Expr: value}
+			value.Map(func(k, v Value) Value {
+				if k == 0 {
+					return v
 				}
-				args.Set(v.Key, val)
-			}
+				return e.Eval(v)
+			})
 
-			result := fn(&args)
+			result := fn(value)
 			if err, isErr := result.(error); isErr {
-				return EvalError{Cause: err, Expr: v}
+				return EvalError{Cause: err, Expr: value}
 			}
 
 			return result
