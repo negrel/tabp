@@ -122,18 +122,12 @@ func (mt *Table) Append(v Value) int {
 
 // Insert inserts value v at index k (must be an integer). If index k already holds
 // an entry, it is inserted at k+1.
-func (mt *Table) Insert(k Value, values ...Value) Value {
+func (mt *Table) Insert(k int, values ...Value) {
 	if len(values) == 0 {
-		return nil
+		return
 	}
 
-	i, isInt := k.(int)
-	if !isInt {
-		return Error("failed to insert: index is not an integer")
-	}
-
-	mt.insert(i, values...)
-	return nil
+	mt.insert(k, values...)
 }
 
 func (mt *Table) insert(startK int, values ...Value) {
