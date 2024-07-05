@@ -2,8 +2,6 @@ package tabp
 
 import (
 	"strings"
-
-	"golang.org/x/exp/slices"
 )
 
 // Table is a map based implementation of Table.
@@ -88,28 +86,40 @@ func (mt *Table) mapSetEntry(entry TableEntry) {
 }
 
 func (mt *Table) mapGet(k Value) Value {
-	v, _ := mt.mapGetEntry(k)
-	return v.Value
+	return mt.mapGetEntry(k).Value
 }
 
-func (mt *Table) mapGetEntry(k Value) (TableEntry, bool) {
+func (mt *Table) mapGetEntry(k Value) TableEntry {
 	if mt.kv == nil {
-		return TableEntry{}, false
+		return TableEntry{}
 	}
 
-	entry, ok := mt.kv[k]
-	return entry, ok
+	return mt.kv[k]
 }
 
 // Get returns value associated with given key. A nil value is returned if key
 // is not found.
 func (mt *Table) Get(k Value) Value {
 	arrayK, kIsInt := k.(int)
-	if kIsInt && arrayK < len(mt.seq) {
+	if kIsInt && arrayK >= 0 && arrayK < len(mt.seq) {
 		return mt.arrayGet(arrayK)
 	}
 
 	return mt.mapGet(k)
+}
+
+// Has returns whether table contains given key.
+func (mt *Table) Has(k Value) bool {
+	arrayK, kIsInt := k.(int)
+	return kIsInt && mt.arrayHas(arrayK) || mt.mapHas(k)
+}
+
+func (mt *Table) arrayHas(k int) bool {
+	return k >= 0 && k < len(mt.seq)
+}
+
+func (mt *Table) mapHas(k Value) bool {
+	return mt.mapGet(k) != nil
 }
 
 // Append adds given value at the end of table's sequence. A sequence starts
@@ -123,6 +133,7 @@ func (mt *Table) Append(v Value) int {
 // Insert inserts value v at index k (must be an integer). If index k already holds
 // an entry, it is inserted at k+1.
 func (mt *Table) Insert(k int, values ...Value) {
+	// TODO improve algo efficiency.
 	if len(values) == 0 {
 		return
 	}
@@ -132,12 +143,12 @@ func (mt *Table) Insert(k int, values ...Value) {
 
 func (mt *Table) insert(startK int, values ...Value) {
 	for i, value := range values {
-		k := startK + i
 		if value == nil {
 			continue
 		}
+		k := startK + i
 
-		if k >= 0 && k <= len(mt.seq) {
+		if k >= 0 && k < len(mt.seq) {
 			mt.arrayInsert(k, value)
 		} else {
 			mt.mapInsert(k, value)
@@ -148,15 +159,14 @@ func (mt *Table) insert(startK int, values ...Value) {
 }
 
 func (mt *Table) arrayInsert(k int, v Value) {
-	mt.seq = slices.Insert(mt.seq, k, v)
+	mt.copyEntryTo(k, 1)
+	mt.arraySet(k, v)
 }
 
 func (mt *Table) mapInsert(k int, v Value) {
-	entry, ok := mt.mapGetEntry(k)
-
 	// Entry exists, move next entry first.
-	if ok {
-		mt.mapInsert(k+1, entry.Value)
+	if mt.Has(k) {
+		mt.copyEntryTo(k, 1)
 	}
 
 	// Insert entry.
@@ -164,6 +174,41 @@ func (mt *Table) mapInsert(k int, v Value) {
 		Key:   k,
 		Value: v,
 	})
+}
+
+func (mt *Table) copyEntryTo(k, delta int) {
+	dstK := k + delta
+	copyFromSeq := k >= 0 && k < len(mt.seq)
+	copyToSeq := dstK >= 0 && dstK < len(mt.seq)
+	appendToSeq := copyToSeq && dstK == len(mt.seq)
+
+	if copyFromSeq {
+		if copyToSeq { // Copy value within sequence.
+			if !appendToSeq {
+				mt.copyEntryTo(dstK, delta)
+			}
+			mt.arraySet(dstK, mt.arrayGet(k))
+		} else { // Copy value from sequence to map.
+			// Copy destination map value if any.
+			if mt.mapGet(dstK) != nil {
+				mt.copyEntryTo(dstK, delta)
+			}
+			mt.mapSet(dstK, mt.arrayGet(k))
+		}
+	} else {
+		if copyToSeq { // Copy value from map to sequence.
+			if !appendToSeq {
+				mt.copyEntryTo(dstK, delta)
+			}
+			mt.arraySet(dstK, mt.mapGet(k))
+		} else { // Copy value from map to map.
+			// Copy destination map value if any.
+			if mt.mapGet(dstK) != nil {
+				mt.copyEntryTo(dstK, delta)
+			}
+			mt.mapSet(dstK, mt.mapGet(k))
+		}
+	}
 }
 
 // SeqLen returns length of table sequence.
@@ -297,8 +342,8 @@ func (mt *Table) ToSExpr() string {
 
 func (mt *Table) fixSeqHole() {
 	for {
-		entry, ok := mt.mapGetEntry(len(mt.seq))
-		if !ok {
+		entry := mt.mapGetEntry(len(mt.seq))
+		if entry.Value == nil {
 			break
 		}
 

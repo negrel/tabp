@@ -133,12 +133,12 @@ func TestTable(t *testing.T) {
 			t.Run("Prepend", func(t *testing.T) {
 				tab := Table{}
 
-				tab.Insert(1, 4, 5, 6)
-				tab.Insert(1, 1, 2, 3)
+				tab.Set(0, 6)
+				tab.Insert(-1, 4, 5)
+				tab.Insert(-1, 0, 1, 2, 3)
+				tab.Set(-1, nil)
 
-				for i := 1; i <= tab.Len(); i++ {
-					require.Equal(t, i, tab.Get(i))
-				}
+				require.Equal(t, `(1 2 3 4 5 6)`, Sexpr(&tab))
 			})
 
 			t.Run("Middle", func(t *testing.T) {
@@ -169,8 +169,10 @@ func TestTable(t *testing.T) {
 				tab := Table{}
 
 				tab.Insert(1, 4, 5, 6)
+				// [] 1: 4, 2: 5, 3: 6
 				tab.Insert(-1, -1, 1, 2, 3)
 				tab.Set(-1, nil)
+				// [1, 2, 3] 4: 4, 5: 5, 6: 6
 
 				require.Equal(t, `(1 2 3 4 5 6)`, Sexpr(&tab))
 			})
@@ -180,8 +182,9 @@ func TestTable(t *testing.T) {
 
 				tab.Set(-1, 0)
 				tab.Insert(1, 1, 2, 3)
-				tab.Insert(-1, -1)
 
+				// Insert at -1 to shift -1 to 0 and create sequence.
+				tab.Insert(-1, -1)
 				tab.Set(-1, nil)
 
 				require.Equal(t, `(0 1 2 3)`, Sexpr(&tab))
