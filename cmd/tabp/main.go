@@ -1,78 +1,19 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/negrel/tabp/pkg/tabp"
 )
 
 func main() {
-	prompt := "tabp> "
-	stdinInfo, err := os.Stdin.Stat()
-	if err != nil {
-		panic(err)
-	}
-
-	if (stdinInfo.Mode() & os.ModeCharDevice) == 0 {
-		prompt = ""
-	}
-
-	parser := tabp.NewParser(os.Stdin)
-
-	env := tabp.NewEnv()
-	env.Defun("sprintf", func(tab *tabp.Table) tabp.Value {
-		format, isString := tab.Get(1).(string)
-		if !isString {
-			return tabp.Error("format is not a string")
-		}
-
-		args := make([]any, 0, tab.SeqLen())
-		for i := 2; i < tab.SeqLen(); i++ {
-			args = append(args, tab.Get(i))
-		}
-
-		return fmt.Sprintf(string(format), args...)
-	})
-
-	env.Defun("printf", func(tab *tabp.Table) tabp.Value {
-		format, isString := tab.Get(1).(string)
-		if !isString {
-			return tabp.Error("format is not a string")
-		}
-
-		args := make([]any, 0, tab.SeqLen())
-		for i := 2; i < tab.SeqLen(); i++ {
-			args = append(args, tab.Get(i))
-		}
-
-		fmt.Printf(string(format), args...)
-
-		return nil
-	})
-
-	env.Defvar("NAME", "Paola")
-
-	for {
-		fmt.Print(prompt)
-		value, err := parser.Parse()
-		if err.Cause != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-
+	val := tabp.Eval(os.Stdin)
+	if val != nil {
+		if err, isErr := val.(error); isErr {
 			fmt.Fprintln(os.Stderr, err.Error())
+			return
 		}
-
-		value = env.Eval(value)
-		if value != nil {
-			if err, isErr := value.(error); isErr {
-				fmt.Fprintln(os.Stderr, err.Error())
-			} else {
-				fmt.Println(tabp.Sexpr(value))
-			}
-		}
+		fmt.Println(tabp.Sexpr(val))
 	}
 }

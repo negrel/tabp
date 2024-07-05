@@ -57,12 +57,22 @@ func (e *Env) Eval(v Value) Value {
 				return EvalError{Cause: Error("function not found"), Expr: v}
 			}
 
-			value.Map(func(k, v Value) Value {
+			var (
+				err   error
+				isErr bool
+			)
+			value.Map(func(k, v Value) (Value, bool) {
 				if k == 0 {
-					return v
+					return v, false
 				}
-				return e.Eval(v)
+				v = e.Eval(v)
+				err, isErr = v.(error)
+				return v, isErr
 			})
+
+			if err != nil {
+				return EvalError{Cause: err, Expr: value}
+			}
 
 			result := fn(value)
 			if err, isErr := result.(error); isErr {

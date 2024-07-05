@@ -177,6 +177,11 @@ func (mt *Table) SeqLen() int {
 	return len(mt.seq)
 }
 
+// Seq returns table sequence.
+func (mt *Table) Seq() []Value {
+	return mt.seq
+}
+
 // Len returns number of entries in table.
 func (mt *Table) Len() int {
 	return len(mt.seq) + len(mt.kv)
@@ -234,16 +239,24 @@ func (mt *Table) Entries() []TableEntry {
 }
 
 // Map maps all entries of table using returned value from the given function.
-func (mt *Table) Map(fn func(k, v Value) Value) {
+func (mt *Table) Map(fn func(k, v Value) (Value, bool)) {
+	var stop bool
+
 	for k := 0; k < len(mt.seq); k++ {
 		v := mt.seq[k]
-		v = fn(k, v)
+		v, stop = fn(k, v)
 		mt.arraySet(k, v)
+		if stop {
+			return
+		}
 	}
 
 	for k, entry := range mt.kv {
-		entry.Value = fn(k, entry.Value)
+		entry.Value, stop = fn(k, entry.Value)
 		mt.mapSet(entry.Key, entry.Value)
+		if stop {
+			return
+		}
 	}
 }
 

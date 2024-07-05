@@ -1,1 +1,4 @@
-(printf "Hello %s!\n" NAME)
+(progn
+	(printf "You're running tabp version %v\n" tabp-version)
+	(printf "Hello World!\n")
+)
