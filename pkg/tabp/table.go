@@ -228,7 +228,7 @@ func (mt *Table) Len() int {
 
 // Keys returns all keys within table.
 func (mt *Table) Keys() []Value {
-	keys := make([]Value, 0, len(mt.seq)+len(mt.kv))
+	keys := make([]Value, len(mt.seq)+len(mt.kv))
 
 	for i := range mt.seq {
 		keys[i] = i
@@ -245,7 +245,7 @@ func (mt *Table) Keys() []Value {
 
 // Values returns all values within table.
 func (mt *Table) Values() []Value {
-	values := make([]Value, 0, mt.Len())
+	values := make([]Value, mt.Len())
 
 	for i, value := range mt.seq {
 		values[i] = value
@@ -262,7 +262,7 @@ func (mt *Table) Values() []Value {
 
 // Entries returns all entries of table.
 func (mt *Table) Entries() []TableEntry {
-	entries := make([]TableEntry, 0, len(mt.seq)+len(mt.kv))
+	entries := make([]TableEntry, len(mt.seq)+len(mt.kv))
 
 	for i, value := range mt.seq {
 		entries[i] = TableEntry{i, value}
