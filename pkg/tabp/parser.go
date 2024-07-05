@@ -2,6 +2,7 @@ package tabp
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"strconv"
@@ -351,5 +352,5 @@ func (p *Parser) parseSymbol(r rune) (Symbol, ParseError) {
 		}
 	}
 
-	return Symbol(UnsafeString(buf)), ParseError{}
+	return Symbol(UnsafeString(bytes.ToUpper(buf))), ParseError{}
 }

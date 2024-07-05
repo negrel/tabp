@@ -37,11 +37,11 @@ func TestParser(t *testing.T) {
 		})
 
 		t.Run("WithSpaces", func(t *testing.T) {
-			parser := NewParser(bytes.NewBufferString("|A symbol with spaces|"))
+			parser := NewParser(bytes.NewBufferString("|A SYMBOL WITH SPACES|"))
 
 			v, err := parser.Parse()
 			require.NoError(t, err.Cause)
-			require.Equal(t, Symbol("|A symbol with spaces|"), v)
+			require.Equal(t, Symbol("|A SYMBOL WITH SPACES|"), v)
 		})
 	})
 
@@ -60,7 +60,7 @@ func TestParser(t *testing.T) {
 			v, err := parser.Parse()
 			require.NoError(t, err.Cause)
 			require.IsType(t, &Table{}, v)
-			require.Equal(t, Symbol("Symbol"), v.(*Table).Get(0))
+			require.Equal(t, Symbol("SYMBOL"), v.(*Table).Get(0))
 		})
 
 		t.Run("SingleNumber", func(t *testing.T) {
@@ -82,12 +82,12 @@ func TestParser(t *testing.T) {
 		})
 
 		t.Run("Mixed", func(t *testing.T) {
-			parser := NewParser(bytes.NewBufferString(`(Symbol 3.14 "my string")`))
+			parser := NewParser(bytes.NewBufferString(`(SYMBOL 3.14 "my string")`))
 
 			v, err := parser.Parse()
 			require.NoError(t, err.Cause)
 			require.IsType(t, &Table{}, v)
-			require.Equal(t, Symbol("Symbol"), v.(*Table).Get(0))
+			require.Equal(t, Symbol("SYMBOL"), v.(*Table).Get(0))
 		})
 	})
 }
