@@ -1,17 +1,7 @@
 package tabp
 
-import "strconv"
-
 // Value define a Tabp value.
 type Value any
-
-// String is a string that implements Value.
-type String string
-
-// ToSExpr implements SExpr.
-func (s String) ToSExpr() string {
-	return strconv.Quote(string(s))
-}
 
 // Symbol is a string that implements Value.
 type Symbol string

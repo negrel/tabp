@@ -14,7 +14,7 @@ func main() {
 
 	env := tabp.NewEnv()
 	env.Defun("sprintf", func(tab *tabp.Table) tabp.Value {
-		format, isString := tab.Get(1).(tabp.String)
+		format, isString := tab.Get(1).(string)
 		if !isString {
 			return tabp.Error("format is not a string")
 		}
@@ -24,11 +24,11 @@ func main() {
 			args = append(args, tab.Get(i))
 		}
 
-		return tabp.String(fmt.Sprintf(string(format), args...))
+		return fmt.Sprintf(string(format), args...)
 	})
 
 	env.Defun("printf", func(tab *tabp.Table) tabp.Value {
-		format, isString := tab.Get(1).(tabp.String)
+		format, isString := tab.Get(1).(string)
 		if !isString {
 			return tabp.Error("format is not a string")
 		}
@@ -63,5 +63,4 @@ func main() {
 			}
 		}
 	}
-
 }

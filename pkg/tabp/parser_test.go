@@ -50,7 +50,7 @@ func TestParser(t *testing.T) {
 
 		v, err := parser.Parse()
 		require.NoError(t, err.Cause)
-		require.Equal(t, String("foo bar baz"), v)
+		require.Equal(t, "foo bar baz", v)
 	})
 
 	t.Run("Table", func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestParser(t *testing.T) {
 			v, err := parser.Parse()
 			require.NoError(t, err.Cause)
 			require.IsType(t, &Table{}, v)
-			require.Equal(t, String("my string"), v.(*Table).Get(0))
+			require.Equal(t, "my string", v.(*Table).Get(0))
 		})
 
 		t.Run("Mixed", func(t *testing.T) {

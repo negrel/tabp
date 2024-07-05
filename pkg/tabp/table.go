@@ -235,9 +235,14 @@ func (mt *Table) Entries() []TableEntry {
 
 // Map maps all entries of table using returned value from the given function.
 func (mt *Table) Map(fn func(k, v Value) Value) {
-	for k, v := range mt.kv {
-		v.Value = fn(k, v.Value)
-		mt.kv[k] = v
+	for k, v := range mt.seq {
+		v = fn(k, v)
+		mt.arraySet(k, v)
+	}
+
+	for k, entry := range mt.kv {
+		entry.Value = fn(k, entry.Value)
+		mt.mapSet(entry.Key, entry.Value)
 	}
 }
 

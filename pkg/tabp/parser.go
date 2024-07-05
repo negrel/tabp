@@ -296,7 +296,7 @@ func (p *Parser) parseNumber(r rune) (any, ParseError) {
 	return i, ParseError{}
 }
 
-func (p *Parser) parseString(r rune) (String, ParseError) {
+func (p *Parser) parseString(r rune) (string, ParseError) {
 	var (
 		buf      []byte
 		parseErr ParseError
@@ -308,7 +308,7 @@ func (p *Parser) parseString(r rune) (String, ParseError) {
 		return r != '"'
 	}, buf)
 	if parseErr.Cause != nil {
-		return String(""), parseErr
+		return "", parseErr
 	}
 
 	buf = utf8.AppendRune(buf, r)
@@ -323,7 +323,7 @@ func (p *Parser) parseString(r rune) (String, ParseError) {
 		}
 	}
 
-	return String(str), ParseError{}
+	return str, ParseError{}
 }
 
 func (p *Parser) parseSymbol(r rune) (Symbol, ParseError) {
