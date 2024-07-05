@@ -59,8 +59,9 @@ func TestTable(t *testing.T) {
 
 			require.Equal(t, 6, tab.SeqLen())
 			require.Equal(t, 6, len(tab.array)) // Elements are stored in array.
+			require.Equal(t, 6, tab.Len())
 			// Key are present because of insertion order.
-			require.Equal(t, `(4: 4 5: 5 2 1: 1 0: 0 3: 3)`, Sexpr(&tab))
+			require.Equal(t, `(0 1 2 3 4 5)`, Sexpr(&tab))
 		})
 	})
 

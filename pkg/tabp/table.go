@@ -2,30 +2,25 @@ package tabp
 
 import (
 	"strings"
-
-	"golang.org/x/exp/slices"
 )
 
 // Table is a map based implementation of Table.
 type Table struct {
-	kv     map[Value]TableEntry
-	keys   []Value
-	array  []TableEntry
-	seqLen int
+	kv    map[Value]TableEntry
+	array []TableEntry
 }
 
 // TableEntry define an entry in a Table.
 type TableEntry struct {
-	keyIndex int
-	Key      any
-	Value    any
+	Key   any
+	Value any
 }
 
 // Set inserts/updates value associated to given key. If provided value is nil,
 // entry is deleted.
 func (mt *Table) Set(k, v Value) {
 	arrayK, kIsInt := k.(int)
-	if kIsInt && arrayK <= mt.seqLen {
+	if kIsInt && arrayK <= len(mt.array) {
 		mt.arraySet(arrayK, v)
 		return
 	}
@@ -33,34 +28,28 @@ func (mt *Table) Set(k, v Value) {
 	mt.mapSet(k, v)
 }
 
-// 0 <= k <= mt.seqLen
+// 0 <= k <= len(mt.array)
 func (mt *Table) arraySet(k int, v Value) {
 	// Delete.
 	if v == nil {
 		// migrate element after k to map.
-		for i := k + 1; i < mt.seqLen; i++ {
+		for i := k + 1; i < len(mt.array); i++ {
 			mt.mapSetEntry(i, mt.array[i])
 		}
 
 		// Delete k.
-		mt.seqLen = k
-		index := mt.array[k].keyIndex
 		mt.array = mt.array[:k]
-		mt.keys = slices.Delete(mt.keys, index, index+1)
 		return
 	}
 
 	entry := TableEntry{
-		keyIndex: len(mt.keys),
-		Key:      k,
-		Value:    v,
+		Key:   k,
+		Value: v,
 	}
 
-	// Grow if needed. (Insert)
-	if len(mt.array)-1 <= k {
+	// Insert.
+	if k == len(mt.array) {
 		mt.array = append(mt.array, entry)
-		mt.keys = append(mt.keys, k) // Add key on insert.
-		mt.seqLen++
 		mt.fillSeqHole()
 		return
 	}
@@ -69,23 +58,15 @@ func (mt *Table) arraySet(k int, v Value) {
 	mt.array[k] = entry
 }
 
+// 0 <= k <= len(mt.array)
 func (mt *Table) arrayGet(k int) Value {
-	// Grow if needed.
-	if mt.seqLen < k {
-		return nil
-	}
-
 	return mt.array[k].Value
 }
 
 func (mt *Table) mapSet(k Value, v Value) {
 	// Delete.
 	if v == nil {
-		entry, entryExists := mt.kv[k]
-		if entryExists {
-			mt.keys = slices.Delete(mt.keys, entry.keyIndex, entry.keyIndex)
-			delete(mt.kv, k)
-		}
+		delete(mt.kv, k)
 		return
 	}
 
@@ -94,9 +75,7 @@ func (mt *Table) mapSet(k Value, v Value) {
 
 	// Insert.
 	if !entryExists {
-		entry.keyIndex = len(mt.keys)
 		entry.Key = k
-		mt.keys = append(mt.keys, k)
 	}
 
 	// Update.
@@ -127,7 +106,7 @@ func (mt *Table) mapGetEntry(k Value) TableEntry {
 // is not found.
 func (mt *Table) Get(k Value) Value {
 	arrayK, kIsInt := k.(int)
-	if kIsInt && arrayK < mt.seqLen {
+	if kIsInt && arrayK < len(mt.array) {
 		return mt.arrayGet(arrayK)
 	}
 
@@ -137,38 +116,67 @@ func (mt *Table) Get(k Value) Value {
 // Append adds given value at the end of table's sequence. A sequence starts
 // with key tab[0] and ends when tab[k] is nil.
 func (mt *Table) Append(v Value) int {
-	// Set value.
-	mt.Set(mt.seqLen, v)
+	mt.arraySet(len(mt.array), v)
 
-	return mt.seqLen
+	return len(mt.array)
 }
 
 // SeqLen returns length of table sequence.
 func (mt *Table) SeqLen() int {
-	return mt.seqLen
+	return len(mt.array)
+}
+
+// Len returns number of entries in table.
+func (mt *Table) Len() int {
+	return len(mt.array) + len(mt.kv)
 }
 
 // Keys implements Table.
 func (mt *Table) Keys() []Value {
-	return mt.keys
+	keys := make([]Value, 0, len(mt.array)+len(mt.kv))
+
+	for i, entry := range mt.array {
+		keys[i] = entry.Key
+	}
+
+	i := 0
+	for k := range mt.kv {
+		keys[len(mt.array)+i] = k
+		i++
+	}
+
+	return keys
 }
 
 // Values implements Table.
 func (mt *Table) Values() []Value {
-	var result []Value
+	values := make([]Value, 0, mt.Len())
 
-	for _, k := range mt.keys {
-		result = append(result, mt.kv[k].Value)
+	for i, entry := range mt.array {
+		values[i] = entry.Value
 	}
 
-	return result
+	i := 0
+	for _, entry := range mt.kv {
+		values[len(mt.array)+i] = entry.Value
+		i++
+	}
+
+	return values
 }
 
 // Entries implements Table.
 func (mt *Table) Entries() []TableEntry {
-	var entries []TableEntry
-	for _, k := range mt.keys {
-		entries = append(entries, mt.kv[k])
+	entries := make([]TableEntry, 0, len(mt.array)+len(mt.kv))
+
+	for i, entry := range mt.array {
+		entries[i] = entry
+	}
+
+	i := 0
+	for _, entry := range mt.kv {
+		entries[len(mt.array)+i] = entry
+		i++
 	}
 
 	return entries
@@ -197,27 +205,24 @@ func (mt *Table) ToSExpr() string {
 	var result strings.Builder
 	result.WriteRune('(')
 
-	// Iterate over keys in insertion order.
-	for i, k := range mt.keys {
-		entry := mt.kv[k]
+	totalKeys := len(mt.array) + len(mt.kv)
 
-		intK, kIsInt := k.(int)
-
-		// Key is an actual key.
-		if !kIsInt || i != intK {
-			result.WriteString(Sexpr(k))
-			result.WriteString(": ")
-		}
-
-		// entry is stored in array.
-		if kIsInt && intK < mt.seqLen {
-			entry = mt.array[intK]
-		}
-
+	for k, entry := range mt.array {
 		result.WriteString(Sexpr(entry.Value))
-		if i < len(mt.keys)-1 {
+		if k < totalKeys-1 {
 			result.WriteRune(' ')
 		}
+	}
+
+	i := len(mt.array)
+	for _, entry := range mt.kv {
+		result.WriteString(Sexpr(entry.Key))
+		result.WriteString(": ")
+		result.WriteString(Sexpr(entry.Value))
+		if i < totalKeys-1 {
+			result.WriteRune(' ')
+		}
+		i++
 	}
 
 	result.WriteRune(')')
@@ -227,13 +232,12 @@ func (mt *Table) ToSExpr() string {
 
 func (mt *Table) fillSeqHole() {
 	for {
-		entry := mt.mapGetEntry(mt.seqLen)
+		entry := mt.mapGetEntry(len(mt.array))
 		if entry.Value == nil {
 			break
 		}
 
-		mt.kv[mt.seqLen] = TableEntry{}
+		delete(mt.kv, len(mt.array))
 		mt.array = append(mt.array, entry)
-		mt.seqLen++
 	}
 }

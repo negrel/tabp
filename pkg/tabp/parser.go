@@ -212,7 +212,7 @@ func (p *Parser) parseTable() (*Table, ParseError) {
 		// End of table.
 		if r == ')' {
 			// Nil table.
-			if len(table.keys) == 0 {
+			if table.Len() == 0 {
 				return nil, ParseError{}
 			}
 
