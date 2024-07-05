@@ -58,7 +58,7 @@ func TestTable(t *testing.T) {
 			tab.Set(3, 3)
 
 			require.Equal(t, 6, tab.SeqLen())
-			require.Equal(t, 6, len(tab.array)) // Elements are stored in array.
+			require.Equal(t, 6, len(tab.seq)) // Elements are stored in array.
 			require.Equal(t, 6, tab.Len())
 			// Key are present because of insertion order.
 			require.Equal(t, `(0 1 2 3 4 5)`, Sexpr(&tab))
@@ -74,7 +74,8 @@ func TestTable(t *testing.T) {
 
 			require.Equal(t, "foo", tab.Get(0))
 		})
-		t.Run("AfterSequence", func(t *testing.T) {
+
+		t.Run("NonEmpty", func(t *testing.T) {
 			tab := Table{}
 
 			tab.Set(0, "foo")
@@ -95,6 +96,106 @@ func TestTable(t *testing.T) {
 			require.Equal(t, 3, size)
 
 			require.Equal(t, "bar", tab.Get(1))
+		})
+	})
+
+	t.Run("Insert", func(t *testing.T) {
+		t.Run("InSequence", func(t *testing.T) {
+			t.Run("Prepend", func(t *testing.T) {
+				tab := Table{}
+
+				_ = tab.Insert(0, 4, 5, 6)
+				_ = tab.Insert(0, 1, 2, 3)
+
+				require.Equal(t, `(1 2 3 4 5 6)`, Sexpr(&tab))
+			})
+
+			t.Run("Middle", func(t *testing.T) {
+				tab := Table{}
+
+				_ = tab.Insert(0, 1, 2, 5, 6)
+				_ = tab.Insert(2, 3, 4)
+
+				require.Equal(t, `(1 2 3 4 5 6)`, Sexpr(&tab))
+			})
+
+			t.Run("Append", func(t *testing.T) {
+				tab := Table{}
+
+				_ = tab.Insert(0, 1, 2, 3)
+				_ = tab.Insert(tab.SeqLen(), 4, 5, 6)
+
+				require.Equal(t, `(1 2 3 4 5 6)`, Sexpr(&tab))
+			})
+		})
+
+		t.Run("OutOfSequence", func(t *testing.T) {
+			t.Run("Prepend", func(t *testing.T) {
+				tab := Table{}
+
+				_ = tab.Insert(1, 4, 5, 6)
+				_ = tab.Insert(1, 1, 2, 3)
+
+				for i := 1; i <= tab.Len(); i++ {
+					require.Equal(t, i, tab.Get(i))
+				}
+			})
+
+			t.Run("Middle", func(t *testing.T) {
+				tab := Table{}
+
+				_ = tab.Insert(1, 1, 2, 5, 6)
+				_ = tab.Insert(3, 3, 4)
+
+				for i := 1; i <= tab.Len(); i++ {
+					require.Equal(t, i, tab.Get(i))
+				}
+			})
+
+			t.Run("Append", func(t *testing.T) {
+				tab := Table{}
+
+				_ = tab.Insert(1, 1, 2, 3)
+				_ = tab.Insert(4, 4, 5, 6)
+
+				for i := 1; i <= tab.Len(); i++ {
+					require.Equal(t, i, tab.Get(i))
+				}
+			})
+		})
+
+		t.Run("InAndOutOfSequence", func(t *testing.T) {
+			t.Run("Prepend", func(t *testing.T) {
+				tab := Table{}
+
+				_ = tab.Insert(1, 4, 5, 6)
+				_ = tab.Insert(-1, -1, 1, 2, 3)
+				tab.Set(-1, nil)
+
+				require.Equal(t, `(1 2 3 4 5 6)`, Sexpr(&tab))
+			})
+
+			t.Run("Middle", func(t *testing.T) {
+				tab := Table{}
+
+				tab.Set(-1, 0)
+				tab.Insert(1, 1, 2, 3)
+				_ = tab.Insert(-1, -1)
+
+				tab.Set(-1, nil)
+
+				require.Equal(t, `(0 1 2 3)`, Sexpr(&tab))
+			})
+
+			t.Run("Append", func(t *testing.T) {
+				tab := Table{}
+
+				tab.Insert(0, 1, 2, 3)
+				tab.Insert(4, 5, 6)
+				tab.Insert(3, 4)
+
+				require.Equal(t, `(1 2 3 4 5 6)`, Sexpr(&tab))
+			})
 		})
 	})
 
