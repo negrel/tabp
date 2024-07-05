@@ -1,6 +1,9 @@
+//go:build goexperiment.rangefunc
+
 package tabp
 
 import (
+	"iter"
 	"strings"
 )
 
@@ -221,60 +224,47 @@ func (mt *Table) Seq() []Value {
 	return mt.seq
 }
 
+// IterSeq returns an iter.Seq over table sequence.
+func (mt *Table) IterSeq() iter.Seq2[int, Value] {
+	return func(yield func(i int, v Value) bool) {
+		for i := 0; i < len(mt.seq); i++ {
+			yield(i, mt.seq[i])
+		}
+	}
+}
+
+// IterKVs returns an iter.Seq over table keys and values, sequence excluded.
+func (mt *Table) IterKVs() iter.Seq2[Value, Value] {
+	return func(yield func(k, v Value) bool) {
+		for k, v := range mt.kv {
+			if !yield(k, v) {
+				break
+			}
+		}
+	}
+}
+
+// Iterreturns an iter.Seq over table sequence, keys and values.
+func (mt *Table) Iter() iter.Seq2[Value, Value] {
+	return func(yield func(k, v Value) bool) {
+		for i, v := range mt.IterSeq() {
+			yield(i, v)
+		}
+
+		for k, v := range mt.IterKVs() {
+			yield(k, v)
+		}
+	}
+}
+
+// Len returns number of entries in table.
+func (mt *Table) KVsLen() int {
+	return len(mt.kv)
+}
+
 // Len returns number of entries in table.
 func (mt *Table) Len() int {
 	return len(mt.seq) + len(mt.kv)
-}
-
-// Keys returns all keys within table.
-func (mt *Table) Keys() []Value {
-	keys := make([]Value, len(mt.seq)+len(mt.kv))
-
-	for i := range mt.seq {
-		keys[i] = i
-	}
-
-	i := 0
-	for k := range mt.kv {
-		keys[len(mt.seq)+i] = k
-		i++
-	}
-
-	return keys
-}
-
-// Values returns all values within table.
-func (mt *Table) Values() []Value {
-	values := make([]Value, mt.Len())
-
-	for i, value := range mt.seq {
-		values[i] = value
-	}
-
-	i := 0
-	for _, entry := range mt.kv {
-		values[len(mt.seq)+i] = entry.Value
-		i++
-	}
-
-	return values
-}
-
-// Entries returns all entries of table.
-func (mt *Table) Entries() []TableEntry {
-	entries := make([]TableEntry, len(mt.seq)+len(mt.kv))
-
-	for i, value := range mt.seq {
-		entries[i] = TableEntry{i, value}
-	}
-
-	i := 0
-	for _, entry := range mt.kv {
-		entries[len(mt.seq)+i] = entry
-		i++
-	}
-
-	return entries
 }
 
 // Map maps all entries of table using returned value from the given function.
@@ -295,17 +285,6 @@ func (mt *Table) Map(fn func(k, v Value) (Value, bool)) {
 		mt.mapSet(entry.Key, entry.Value)
 		if stop {
 			return
-		}
-	}
-}
-
-// ForEach iterate over all entries until there is no more left or given function
-// return true.
-func (mt *Table) ForEach(fn func(k, v Value) bool) {
-	for k, v := range mt.kv {
-		stop := fn(k, v.Value)
-		if stop {
-			break
 		}
 	}
 }
