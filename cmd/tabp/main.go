@@ -10,6 +10,16 @@ import (
 )
 
 func main() {
+	prompt := "tabp> "
+	stdinInfo, err := os.Stdin.Stat()
+	if err != nil {
+		panic(err)
+	}
+
+	if (stdinInfo.Mode() & os.ModeCharDevice) == 0 {
+		prompt = ""
+	}
+
 	parser := tabp.NewParser(os.Stdin)
 
 	env := tabp.NewEnv()
@@ -43,8 +53,10 @@ func main() {
 		return nil
 	})
 
+	env.Defvar("NAME", "Paola")
+
 	for {
-		fmt.Print("tabp> ")
+		fmt.Print(prompt)
 		value, err := parser.Parse()
 		if err.Cause != nil {
 			if errors.Is(err, io.EOF) {
