@@ -82,12 +82,15 @@ func TestParser(t *testing.T) {
 		})
 
 		t.Run("Mixed", func(t *testing.T) {
-			parser := NewParser(bytes.NewBufferString(`(SYMBOL 3.14 "my string")`))
+			parser := NewParser(bytes.NewBufferString(`(Symbol 3.14 "my string" foo: "bar")`))
 
 			v, err := parser.Parse()
 			require.NoError(t, err.Cause)
 			require.IsType(t, &Table{}, v)
 			require.Equal(t, Symbol("SYMBOL"), v.(*Table).Get(0))
+			require.Equal(t, 3.14, v.(*Table).Get(1))
+			require.Equal(t, "my string", v.(*Table).Get(2))
+			require.Equal(t, "bar", v.(*Table).Get(Symbol("FOO")))
 		})
 	})
 }

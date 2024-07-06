@@ -337,7 +337,7 @@ func (p *Parser) parseSymbol(r rune) (Symbol, ParseError) {
 
 	if r == '|' {
 		buf, _, err = p.collectBytesWhile(func(r rune) bool {
-			return r != '|' && r != '(' && r != ')'
+			return r != '|' && r != '(' && r != ')' && r != ':'
 		}, buf)
 		if err.Cause != nil {
 			return Symbol(UnsafeString(buf)), err
@@ -345,7 +345,7 @@ func (p *Parser) parseSymbol(r rune) (Symbol, ParseError) {
 		buf = utf8.AppendRune(buf, '|')
 	} else {
 		buf, _, err = p.collectBytesWhile(func(r rune) bool {
-			return unicode.IsPrint(r) && r != ' ' && r != '(' && r != ')'
+			return unicode.IsPrint(r) && r != ' ' && r != '(' && r != ')' && r != ':'
 		}, buf)
 		if err.Cause != nil {
 			return Symbol(UnsafeString(buf)), err
