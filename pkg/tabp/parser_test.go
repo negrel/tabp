@@ -93,4 +93,33 @@ func TestParser(t *testing.T) {
 			require.Equal(t, "bar", v.(*Table).Get(Symbol("FOO")))
 		})
 	})
+
+	t.Run("LispComment", func(t *testing.T) {
+		parser := NewParser(bytes.NewBufferString(`;; "string" Symbol This is a comment (foo)
+			3.14`))
+
+		v, err := parser.Parse()
+		require.NoError(t, err.Cause)
+		require.Equal(t, 3.14, v)
+	})
+
+	t.Run("SingleLineComment", func(t *testing.T) {
+		parser := NewParser(bytes.NewBufferString(`// "string" Symbol This is a comment (foo)
+			"hello"`))
+
+		v, err := parser.Parse()
+		require.NoError(t, err.Cause)
+		require.Equal(t, "hello", v)
+	})
+
+	t.Run("MultiLineComment", func(t *testing.T) {
+		parser := NewParser(bytes.NewBufferString(`/*
+			"string" Symbol This is a comment (foo) * /
+			*/
+			hello`))
+
+		v, err := parser.Parse()
+		require.NoError(t, err.Cause)
+		require.Equal(t, Symbol("HELLO"), v)
+	})
 }

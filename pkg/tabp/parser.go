@@ -151,6 +151,20 @@ func (p *Parser) Parse() (Value, ParseError) {
 		return nil, err
 	}
 
+	// Comment.
+	if r == ';' || r == '/' { // Regular lisp comments.
+		err = p.parseComment(r)
+		if err.Cause != nil {
+			return nil, err
+		}
+
+		// Skip whitespaces again.
+		r, err = p.skipWhile(unicode.IsSpace)
+		if err.Cause != nil {
+			return nil, err
+		}
+	}
+
 	// Table.
 	if r == '(' {
 		table, err := p.parseTable()
@@ -353,4 +367,38 @@ func (p *Parser) parseSymbol(r rune) (Symbol, ParseError) {
 	}
 
 	return Symbol(UnsafeString(bytes.ToUpper(buf))), ParseError{}
+}
+
+func (p *Parser) parseComment(r rune) (err ParseError) {
+	if r == ';' { // Lisp comment.
+		r, err = p.skipWhile(func(r rune) bool {
+			return r != '\n'
+		})
+	} else if r == '/' { // C style comments.
+		r, err = p.peekRune()
+		if err.Cause != nil {
+			return err
+		}
+
+		switch r {
+		// Single line comment.
+		case '/':
+			r, err = p.skipWhile(func(r rune) bool {
+				return r != '\n'
+			})
+		// Multiline.
+		case '*':
+			previousR := '/'
+			r, err = p.skipWhile(func(r rune) bool {
+				if previousR == '*' && r == '/' {
+					return false
+				}
+
+				previousR = r
+				return true
+			})
+		}
+	}
+
+	return ParseError{}
 }
