@@ -1,0 +1,6 @@
+(defun fib (n)
+	(if (lt n 2)
+		n
+		(add (fib (sub n 1)) (fib (sub n 2)))))
+
+(printf "fib(%v) = %v\n" 32 (fib 32))

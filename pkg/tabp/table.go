@@ -7,7 +7,25 @@ import (
 	"strings"
 )
 
-// Table is a map based implementation of Table.
+// ReadOnlyTable define any table like object with Table read only methods.
+type ReadOnlyTable interface {
+	SExpr
+
+	Has(k Value) bool
+	Get(k Value) Value
+	Seq() []Value
+	SeqLen() int
+	KVsLen() int
+	Len() int
+	IterSeq() iter.Seq2[int, Value]
+	IterKVs() iter.Seq2[Value, Value]
+	Iter() iter.Seq2[Value, Value]
+}
+
+// Table is a datastructure that acts as a map and a vector/slice at the same
+// time. All values are stored in map except values that are part of the
+// sequence. Entries with an integer key 'n' are stored in the slice (and part
+// of the sequence) if for i from 0 to n tab.Get(i) is not nil.
 type Table struct {
 	kv  map[Value]TableEntry
 	seq []Value
@@ -228,7 +246,9 @@ func (mt *Table) Seq() []Value {
 func (mt *Table) IterSeq() iter.Seq2[int, Value] {
 	return func(yield func(i int, v Value) bool) {
 		for i := 0; i < len(mt.seq); i++ {
-			yield(i, mt.seq[i])
+			if !yield(i, mt.seq[i]) {
+				return
+			}
 		}
 	}
 }
@@ -237,7 +257,7 @@ func (mt *Table) IterSeq() iter.Seq2[int, Value] {
 func (mt *Table) IterKVs() iter.Seq2[Value, Value] {
 	return func(yield func(k, v Value) bool) {
 		for k, v := range mt.kv {
-			if !yield(k, v) {
+			if !yield(k, v.Value) {
 				break
 			}
 		}
@@ -248,11 +268,15 @@ func (mt *Table) IterKVs() iter.Seq2[Value, Value] {
 func (mt *Table) Iter() iter.Seq2[Value, Value] {
 	return func(yield func(k, v Value) bool) {
 		for i, v := range mt.IterSeq() {
-			yield(i, v)
+			if !yield(i, v) {
+				return
+			}
 		}
 
 		for k, v := range mt.IterKVs() {
-			yield(k, v)
+			if !yield(k, v) {
+				return
+			}
 		}
 	}
 }
@@ -265,28 +289,6 @@ func (mt *Table) KVsLen() int {
 // Len returns number of entries in table.
 func (mt *Table) Len() int {
 	return len(mt.seq) + len(mt.kv)
-}
-
-// Map maps all entries of table using returned value from the given function.
-func (mt *Table) Map(fn func(k, v Value) (Value, bool)) {
-	var stop bool
-
-	for k := 0; k < len(mt.seq); k++ {
-		v := mt.seq[k]
-		v, stop = fn(k, v)
-		mt.arraySet(k, v)
-		if stop {
-			return
-		}
-	}
-
-	for k, entry := range mt.kv {
-		entry.Value, stop = fn(k, entry.Value)
-		mt.mapSet(entry.Key, entry.Value)
-		if stop {
-			return
-		}
-	}
 }
 
 // ToSExpr implements SExpr.

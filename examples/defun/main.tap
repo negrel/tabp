@@ -1,0 +1,4 @@
+(defun greet (name)
+	(printf "Hello %s!" name))
+
+(greet name: "Paola")

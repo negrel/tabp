@@ -3,14 +3,12 @@ package tabp
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
-	"reflect"
 )
 
 type program struct {
 	parser Parser
-	env    Env
+	env    *Env
 }
 
 // Same as Eval but uses the given string as tabp program.
@@ -22,43 +20,29 @@ func EvalString(tabp string) Value {
 func Eval(r io.Reader) Value {
 	p := program{
 		parser: NewParser(r),
-		env:    NewEnv(),
+		env:    NewEnv(nil),
 	}
 
+	// Variables.
 	p.env.Defvar("TABP-VERSION", "0.1.0")
-	p.env.Defun("PROGN", func(tab *Table) Value {
-		return tab.Get(tab.SeqLen())
-	})
-	p.env.Defun("IF", func(tab *Table) Value {
-		cond := tab.Get(1)
-		if cond != nil {
-			return tab.Get(2)
-		}
 
-		return tab.Get(3)
-	})
-	p.env.Defun("EQ", func(tab *Table) Value {
-		first := tab.Get(1)
-		for i := 2; i < tab.SeqLen(); i++ {
-			if !reflect.DeepEqual(first, tab.Get(i)) {
-				return nil
-			}
-		}
+	// Macros.
+	p.env.Defmacro("DEFUN", macroDefun)
+	p.env.Defmacro("IF", macroIf)
 
-		return true
-	})
-
-	p.env.Defun("PRINTF", func(tab *Table) Value {
-		format, isString := tab.Get(1).(string)
-		if !isString {
-			return Error("format is not a string")
-		}
-
-		args := unsafeAnySlice(tab.Seq()[2:])
-		fmt.Printf(string(format), args...)
-
-		return nil
-	})
+	// Functions.
+	p.env.Defun("PROGN", fnProgn)
+	p.env.Defun("EQ", fnEq)
+	p.env.Defun("LT", fnLt)
+	p.env.Defun("LE", fnLe)
+	p.env.Defun("GT", fnGt)
+	p.env.Defun("GE", fnGe)
+	p.env.Defun("PRINTF", fnPrintf)
+	p.env.Defun("SPRINTF", fnSprintf)
+	p.env.Defun("ADD", fnAdd)
+	p.env.Defun("SUB", fnSub)
+	// p.env.Defun("MUL", func(tab *Table) Value {})
+	// p.env.Defun("DIV", func(tab *Table) Value {})
 
 	for {
 		value, parseErr := p.parser.Parse()
@@ -69,8 +53,8 @@ func Eval(r io.Reader) Value {
 			return parseErr
 		}
 
-		v := p.env.Eval(value)
-		if err, isErr := v.(error); isErr {
+		result := p.env.Eval(value)
+		if err, isErr := result.(error); isErr {
 			return err
 		}
 	}
