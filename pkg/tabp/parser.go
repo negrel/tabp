@@ -226,11 +226,6 @@ func (p *Parser) parseTable() (*Table, ParseError) {
 
 		// End of table.
 		if r == ')' {
-			// Nil table.
-			if table.Len() == 0 {
-				return nil, ParseError{}
-			}
-
 			return &table, ParseError{}
 		}
 

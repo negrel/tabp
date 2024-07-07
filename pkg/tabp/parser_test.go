@@ -92,6 +92,15 @@ func TestParser(t *testing.T) {
 			require.Equal(t, "my string", v.(*Table).Get(2))
 			require.Equal(t, "bar", v.(*Table).Get(Symbol("FOO")))
 		})
+
+		t.Run("Empty", func(t *testing.T) {
+			parser := NewParser(bytes.NewBufferString(`()`))
+
+			v, err := parser.Parse()
+			require.NoError(t, err.Cause)
+			require.IsType(t, &Table{}, v)
+			require.Equal(t, 0, v.(*Table).Len())
+		})
 	})
 
 	t.Run("LispComment", func(t *testing.T) {
