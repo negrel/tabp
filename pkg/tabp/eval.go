@@ -8,7 +8,7 @@ import (
 
 type program struct {
 	parser Parser
-	env    *Env
+	env    Env
 }
 
 // Same as Eval but uses the given string as tabp program.
@@ -41,8 +41,6 @@ func Eval(r io.Reader) Value {
 	p.env.Defun("SPRINTF", fnSprintf)
 	p.env.Defun("ADD", fnAdd)
 	p.env.Defun("SUB", fnSub)
-	// p.env.Defun("MUL", func(tab *Table) Value {})
-	// p.env.Defun("DIV", func(tab *Table) Value {})
 
 	for {
 		value, parseErr := p.parser.Parse()

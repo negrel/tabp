@@ -8,6 +8,8 @@ type Env struct {
 	funcs  map[Symbol]func(*Env, ReadOnlyTable) Value
 	macros map[Symbol]func(*Env, ReadOnlyTable) Value
 	vars   map[Symbol]Value
+	// True if env is dedicated to function execution.
+	isFuncEnv bool
 }
 
 // EvalError define errors returned when evaluating a Tabp S-Expression.
@@ -22,12 +24,34 @@ func (ee EvalError) Error() string {
 }
 
 // NewEnv creates and returns a new blank environment.
-func NewEnv(parent *Env) *Env {
-	return &Env{
-		parent: parent,
-		funcs:  map[Symbol]func(*Env, ReadOnlyTable) Value{},
-		macros: map[Symbol]func(*Env, ReadOnlyTable) Value{},
-		vars:   map[Symbol]Value{},
+func NewEnv(parent *Env) Env {
+	return Env{
+		parent:    parent,
+		funcs:     map[Symbol]func(*Env, ReadOnlyTable) Value{},
+		macros:    map[Symbol]func(*Env, ReadOnlyTable) Value{},
+		vars:      map[Symbol]Value{},
+		isFuncEnv: false,
+	}
+}
+
+func newFuncEnv(parent *Env) Env {
+	return Env{
+		parent:    parent,
+		funcs:     map[Symbol]func(*Env, ReadOnlyTable) Value{},
+		macros:    map[Symbol]func(*Env, ReadOnlyTable) Value{},
+		vars:      map[Symbol]Value{},
+		isFuncEnv: true,
+	}
+}
+
+func (e *Env) globalEnv() *Env {
+	current := e
+	for {
+		if current == nil || current.isFuncEnv == false {
+			return current
+		}
+
+		current = e.parent
 	}
 }
 
@@ -126,7 +150,7 @@ func (e *Env) evalFunc(tab *Table, fnName Symbol) Value {
 		return EvalError{Cause: Error("function not found"), Expr: tab}
 	}
 
-	args := Table{}
+	var args Table
 	for k, v := range tab.Iter() {
 		if k == 0 {
 			args.Append(v)
@@ -145,7 +169,7 @@ func (e *Env) evalFunc(tab *Table, fnName Symbol) Value {
 		}
 	}
 
-	result := fn(e, &args)
+	result := fn(e.globalEnv(), &args)
 	if err, isErr := result.(error); isErr {
 		return EvalError{Cause: err, Expr: tab}
 	}

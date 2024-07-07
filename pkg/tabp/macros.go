@@ -30,7 +30,7 @@ func macroDefun(env *Env, tab ReadOnlyTable) Value {
 	funBody := tab.Get(3)
 
 	env.Defun(name, func(env *Env, argsTab ReadOnlyTable) Value {
-		funcEnv := NewEnv(env)
+		funcEnv := newFuncEnv(env)
 		args := NewArgsTable(argsTab)
 
 		for _, funcArg := range funcArgs {
