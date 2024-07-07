@@ -144,7 +144,7 @@ func (e *Env) Eval(v Value) Value {
 	return res
 }
 
-func (e *Env) evalFunc(tab *Table, fnName Symbol) Value {
+func (e *Env) evalFunc(tab ReadOnlyTable, fnName Symbol) Value {
 	fn := e.getFunc(fnName)
 	if fn == nil {
 		return EvalError{Cause: Error("function not found"), Expr: tab}
@@ -152,8 +152,10 @@ func (e *Env) evalFunc(tab *Table, fnName Symbol) Value {
 
 	var args Table
 	for k, v := range tab.Iter() {
-		if k == 0 {
-			args.Append(v)
+		// Copy function name symbol.
+		if v == fnName {
+			args.Set(k, v)
+			continue
 		}
 
 		arg := e.Eval(v)
@@ -162,11 +164,7 @@ func (e *Env) evalFunc(tab *Table, fnName Symbol) Value {
 			return EvalError{Cause: err, Expr: tab}
 		}
 
-		if k, isInt := k.(int); isInt {
-			args.Append(arg)
-		} else {
-			args.Set(k, v)
-		}
+		args.Set(k, arg)
 	}
 
 	result := fn(e.globalEnv(), &args)

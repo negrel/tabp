@@ -163,7 +163,7 @@ func fnPrintf(_ *Env, tab ReadOnlyTable) Value {
 	}
 
 	args := unsafeAnySlice(tab.Seq()[2:])
-	fmt.Printf(string(format), args...)
+	fmt.Printf(format, args...)
 
 	return nil
 }

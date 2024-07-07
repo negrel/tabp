@@ -9,8 +9,7 @@ type ArgsTable struct {
 // NewArgsTable returns a new ArgsTable.
 func NewArgsTable(tab ReadOnlyTable) ArgsTable {
 	return ArgsTable{
-		tab: tab,
-		// Skip function/macro name.
+		tab:      tab,
 		seqStart: 0,
 	}
 }
