@@ -1,4 +1,6 @@
+(defvar name "Paola")
+
 (defun greet (name)
 	(printf "Hello %s!" name))
 
-(greet name: "Paola")
+(greet name)

@@ -1,5 +1,9 @@
 package tabp
 
+func macroQuote(_ *Env, tab ReadOnlyTable) Value {
+	return tab.Get(1)
+}
+
 func macroDefun(env *Env, tab ReadOnlyTable) Value {
 	name, isSymbol := tab.Get(1).(Symbol)
 	if !isSymbol {
@@ -44,14 +48,25 @@ func macroDefun(env *Env, tab ReadOnlyTable) Value {
 		return funcEnv.Eval(funBody)
 	})
 
-	return nil
+	return name
+}
+
+func macroDefvar(env *Env, tab ReadOnlyTable) Value {
+	name, isSymbol := tab.Get(1).(Symbol)
+	if !isSymbol {
+		return Error("defvar variable name must be a symbol")
+	}
+
+	env.Defvar(name, tab.Get(2))
+
+	return name
 }
 
 func macroIf(env *Env, tab ReadOnlyTable) Value {
 	cond := env.Eval(tab.Get(1))
 	if cond != nil && cond != false {
-		return tab.Get(2)
+		return env.Eval(tab.Get(2))
 	}
 
-	return tab.Get(3)
+	return env.Eval(tab.Get(3))
 }

@@ -27,7 +27,9 @@ func Eval(r io.Reader) Value {
 	p.env.Defvar("TABP-VERSION", "0.1.0")
 
 	// Macros.
+	p.env.Defmacro("QUOTE", macroQuote)
 	p.env.Defmacro("DEFUN", macroDefun)
+	p.env.Defmacro("DEFVAR", macroDefvar)
 	p.env.Defmacro("IF", macroIf)
 
 	// Functions.

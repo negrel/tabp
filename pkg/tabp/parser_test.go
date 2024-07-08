@@ -87,10 +87,67 @@ func TestParser(t *testing.T) {
 			v, err := parser.Parse()
 			require.NoError(t, err.Cause)
 			require.IsType(t, &Table{}, v)
-			require.Equal(t, Symbol("SYMBOL"), v.(*Table).Get(0))
-			require.Equal(t, 3.14, v.(*Table).Get(1))
-			require.Equal(t, "my string", v.(*Table).Get(2))
-			require.Equal(t, "bar", v.(*Table).Get(Symbol("FOO")))
+			tab := v.(*Table)
+			require.Equal(t, Symbol("SYMBOL"), tab.Get(0))
+			require.Equal(t, 3.14, tab.Get(1))
+			require.Equal(t, "my string", tab.Get(2))
+			require.Equal(t, "bar", tab.Get(Symbol("FOO")))
+		})
+
+		t.Run("Quote", func(t *testing.T) {
+			t.Run("Number", func(t *testing.T) {
+				parser := NewParser(bytes.NewBufferString(`'3.14`))
+
+				v, err := parser.Parse()
+				require.NoError(t, err.Cause)
+				require.IsType(t, &Table{}, v)
+				tab := v.(*Table)
+				require.Equal(t, Symbol("QUOTE"), tab.Get(0))
+				require.Equal(t, 3.14, tab.Get(1))
+			})
+
+			t.Run("String", func(t *testing.T) {
+				parser := NewParser(bytes.NewBufferString(`'"foo"`))
+
+				v, err := parser.Parse()
+				require.NoError(t, err.Cause)
+				require.IsType(t, &Table{}, v)
+				tab := v.(*Table)
+				require.Equal(t, Symbol("QUOTE"), tab.Get(0))
+				require.Equal(t, "foo", tab.Get(1))
+			})
+
+			t.Run("Symbol", func(t *testing.T) {
+				parser := NewParser(bytes.NewBufferString(`'foo`))
+
+				v, err := parser.Parse()
+				require.NoError(t, err.Cause)
+				require.IsType(t, &Table{}, v)
+				tab := v.(*Table)
+				require.Equal(t, Symbol("QUOTE"), tab.Get(0))
+				require.Equal(t, Symbol("FOO"), tab.Get(1))
+			})
+
+			t.Run("Table/Mixed", func(t *testing.T) {
+				parser := NewParser(bytes.NewBufferString(`'(Symbol 3.14 "my string" foo: "bar" 'inner-quote)`))
+
+				v, err := parser.Parse()
+				require.NoError(t, err.Cause)
+				require.IsType(t, &Table{}, v)
+				quote := v.(*Table)
+				require.Equal(t, Symbol("QUOTE"), quote.Get(0))
+
+				require.IsType(t, &Table{}, quote.Get(1))
+				tab := quote.Get(1).(*Table)
+				require.IsType(t, &Table{}, v)
+				require.Equal(t, Symbol("SYMBOL"), tab.Get(0))
+				require.Equal(t, 3.14, tab.Get(1))
+				require.Equal(t, "my string", tab.Get(2))
+				require.Equal(t, "bar", tab.Get(Symbol("FOO")))
+				require.IsType(t, &Table{}, tab.Get(3))
+				require.IsType(t, Symbol("QUOTE"), tab.Get(3).(*Table).Get(0))
+				require.IsType(t, Symbol("INNER-QUOTE"), tab.Get(3).(*Table).Get(1))
+			})
 		})
 
 		t.Run("Empty", func(t *testing.T) {

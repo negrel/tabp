@@ -131,7 +131,7 @@ func (e *Env) Eval(v Value) Value {
 				}
 
 				// Macro.
-				return e.Eval(macro(e, value))
+				return macro(e, value)
 			}
 			return EvalError{Cause: Error("function/macro name is not a symbol"), Expr: v}
 

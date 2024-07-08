@@ -165,68 +165,64 @@ func (p *Parser) Parse() (Value, ParseError) {
 		}
 	}
 
-	// Table.
-	if r == '(' {
-		table, err := p.parseTable()
+	// Quote.
+	if r == '\'' {
+		quote, err := p.parseQuote()
 		if err.Cause != nil {
 			return nil, err
 		}
-		if table == nil {
-			return nil, ParseError{}
-		}
 
-		return table, ParseError{}
+		return quote, ParseError{}
+	}
+
+	// Table.
+	if r == '(' {
+		return p.parseTable()
 	}
 
 	// Number.
 	if r == '+' || r == '-' || r == '.' || unicode.IsDigit(r) {
-		number, err := p.parseNumber(r)
-		if err.Cause != nil {
-			return nil, err
-		}
-
-		return number, ParseError{}
+		return p.parseNumber(r)
 	}
 
 	// String.
-	if r == '"' || r == '\'' || r == '`' {
-		str, err := p.parseString(r)
-		if err.Cause != nil {
-			return nil, err
-		}
-
-		return str, ParseError{}
+	if r == '"' {
+		return p.parseString(r)
 	}
 
 	// Symbol.
-	symbol, err := p.parseSymbol(r)
+	return p.parseSymbol(r)
+}
+
+func (p *Parser) parseTable() (*Table, ParseError) {
+	var tab Table
+
+	err := p.parseTableValues(&tab)
 	if err.Cause != nil {
 		return nil, err
 	}
 
-	return symbol, ParseError{}
+	return &tab, ParseError{}
 }
 
-func (p *Parser) parseTable() (*Table, ParseError) {
-	var table Table
-
+func (p *Parser) parseTableValues(tab *Table) ParseError {
 	for {
 		// Skip whitespaces.
 		r, err := p.skipWhile(unicode.IsSpace)
 		if err.Cause != nil {
 			if err.Cause == io.EOF {
-				return nil, ParseError{
+				return ParseError{
 					Cause:    fmt.Errorf("unexpected EOF, table closing parenthesis missing: %w", err),
 					Position: p.cursor,
 				}
 			}
 
-			return nil, err
+			return err
 		}
 
 		// End of table.
 		if r == ')' {
-			return &table, ParseError{}
+			return ParseError{}
 		}
 
 		p.mustUnreadRune()
@@ -234,13 +230,13 @@ func (p *Parser) parseTable() (*Table, ParseError) {
 		// Parse values.
 		value, err := p.Parse()
 		if err.Cause != nil {
-			return nil, err
+			return err
 		}
 
 		// Skip whitespaces.
 		r, err = p.skipWhile(unicode.IsSpace)
 		if err.Cause != nil {
-			return nil, err
+			return err
 		}
 
 		// Value is a key.
@@ -248,12 +244,12 @@ func (p *Parser) parseTable() (*Table, ParseError) {
 			key := value
 			value, err = p.Parse()
 			if err.Cause != nil {
-				return nil, err
+				return err
 			}
 
-			table.Set(key, value)
+			tab.Set(key, value)
 		} else {
-			table.Append(value)
+			tab.Append(value)
 			p.mustUnreadRune()
 		}
 	}
@@ -396,4 +392,19 @@ func (p *Parser) parseComment(r rune) (err ParseError) {
 	}
 
 	return ParseError{}
+}
+
+func (p *Parser) parseQuote() (*Table, ParseError) {
+	var tab Table
+	tab.Append(Symbol("QUOTE"))
+
+	// Parse quoted value.
+	value, err := p.Parse()
+	if err.Cause != nil {
+		return nil, err
+	}
+
+	tab.Append(value)
+
+	return &tab, ParseError{}
 }
