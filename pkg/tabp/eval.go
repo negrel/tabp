@@ -24,7 +24,7 @@ func Eval(r io.Reader) Value {
 	}
 
 	// Variables.
-	p.env.Defvar("TABP-VERSION", "0.1.0")
+	p.env.Defvar("TABP-VERSION", StringValue("0.1.0"))
 
 	// Macros.
 	p.env.Defmacro("DEFUN", macroDefun)
@@ -42,18 +42,19 @@ func Eval(r io.Reader) Value {
 	p.env.Defun("ADD", fnAdd)
 	p.env.Defun("SUB", fnSub)
 
+	var result Value
 	for {
 		value, parseErr := p.parser.Parse()
 		if parseErr.Cause != nil {
 			if errors.Is(parseErr, io.EOF) {
-				return nil
+				return result
 			}
-			return parseErr
+			return ErrorValue(parseErr)
 		}
 
-		result := p.env.Eval(value)
-		if err, isErr := result.(error); isErr {
-			return err
+		result = p.env.Eval(value)
+		if result.Type == ErrorValueType {
+			return result
 		}
 	}
 }

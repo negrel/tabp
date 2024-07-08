@@ -91,7 +91,7 @@ func (e *Env) getVar(name Symbol) Value {
 		return e.parent.getVar(name)
 	}
 
-	return nil
+	return NilValue
 }
 
 // Defun define a function in the environment.
@@ -110,34 +110,29 @@ func (e *Env) Defvar(name Symbol, v Value) {
 }
 
 // Eval evaluates the given value within the environment and returns a new value.
-func (e *Env) Eval(v Value) Value {
+func (e *Env) Eval(value Value) Value {
 	fn := func() Value {
-		if v == nil {
-			return v
-		}
-
-		switch value := v.(type) {
-		case Symbol:
-			return e.getVar(value)
-
-		case *Table:
-			name := value.Get(0)
-			symbol, isSymbol := name.(Symbol)
-			if isSymbol {
+		if value.Type == TableValueType {
+			tab := value.AsTable()
+			name := tab.Get(IntValue(0))
+			if name.Type == SymbolValueType {
+				symbol := name.AsSymbol()
 				macro := e.getMacro(symbol)
 				// Function.
 				if macro == nil {
-					return e.evalFunc(value, symbol)
+					return e.evalFunc(tab, symbol)
 				}
 
 				// Macro.
-				return e.Eval(macro(e, value))
+				return e.Eval(macro(e, tab))
 			}
-			return EvalError{Cause: Error("function/macro name is not a symbol"), Expr: v}
 
-		default:
-			return v
+			return ErrorValue(EvalError{Cause: Error("function/macro name is not a symbol"), Expr: value})
+		} else if value.Type == SymbolValueType {
+			return e.getVar(value.AsSymbol())
 		}
+
+		return value
 	}
 
 	res := fn()
@@ -145,31 +140,31 @@ func (e *Env) Eval(v Value) Value {
 }
 
 func (e *Env) evalFunc(tab ReadOnlyTable, fnName Symbol) Value {
+	// TODO: fix Expr in ErrorValue
 	fn := e.getFunc(fnName)
 	if fn == nil {
-		return EvalError{Cause: Error("function not found"), Expr: tab}
+		return ErrorValue(EvalError{Cause: Error("function not found"), Expr: SymbolValue(fnName)})
 	}
 
 	var args Table
 	for k, v := range tab.Iter() {
 		// Copy function name symbol.
-		if v == fnName {
+		if v.Type == SymbolValueType && v.AsSymbol() == fnName {
 			args.Set(k, v)
 			continue
 		}
 
 		arg := e.Eval(v)
-		err, isErr := arg.(error)
-		if isErr {
-			return EvalError{Cause: err, Expr: tab}
+		if arg.Type == ErrorValueType {
+			return ErrorValue(EvalError{Cause: arg.AsError(), Expr: v})
 		}
 
 		args.Set(k, arg)
 	}
 
 	result := fn(e.globalEnv(), &args)
-	if err, isErr := result.(error); isErr {
-		return EvalError{Cause: err, Expr: tab}
+	if result.Type == ErrorValueType {
+		return ErrorValue(EvalError{Cause: result.AsError(), Expr: SymbolValue(fnName)})
 	}
 
 	return result

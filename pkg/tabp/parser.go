@@ -148,20 +148,20 @@ func (p *Parser) mustSkip(n int) {
 func (p *Parser) Parse() (Value, ParseError) {
 	r, err := p.skipWhile(unicode.IsSpace)
 	if err.Cause != nil {
-		return nil, err
+		return NilValue, err
 	}
 
 	// Comment.
 	if r == ';' || r == '/' { // Regular lisp comments.
 		err = p.parseComment(r)
 		if err.Cause != nil {
-			return nil, err
+			return NilValue, err
 		}
 
 		// Skip whitespaces again.
 		r, err = p.skipWhile(unicode.IsSpace)
 		if err.Cause != nil {
-			return nil, err
+			return NilValue, err
 		}
 	}
 
@@ -169,20 +169,20 @@ func (p *Parser) Parse() (Value, ParseError) {
 	if r == '(' {
 		table, err := p.parseTable()
 		if err.Cause != nil {
-			return nil, err
+			return NilValue, err
 		}
 		if table == nil {
-			return nil, ParseError{}
+			return NilValue, ParseError{}
 		}
 
-		return table, ParseError{}
+		return TableValue(table), ParseError{}
 	}
 
 	// Number.
 	if r == '+' || r == '-' || r == '.' || unicode.IsDigit(r) {
 		number, err := p.parseNumber(r)
 		if err.Cause != nil {
-			return nil, err
+			return NilValue, err
 		}
 
 		return number, ParseError{}
@@ -192,19 +192,19 @@ func (p *Parser) Parse() (Value, ParseError) {
 	if r == '"' || r == '\'' || r == '`' {
 		str, err := p.parseString(r)
 		if err.Cause != nil {
-			return nil, err
+			return NilValue, err
 		}
 
-		return str, ParseError{}
+		return StringValue(str), ParseError{}
 	}
 
 	// Symbol.
 	symbol, err := p.parseSymbol(r)
 	if err.Cause != nil {
-		return nil, err
+		return NilValue, err
 	}
 
-	return symbol, ParseError{}
+	return SymbolValue(symbol), ParseError{}
 }
 
 func (p *Parser) parseTable() (*Table, ParseError) {
@@ -259,7 +259,7 @@ func (p *Parser) parseTable() (*Table, ParseError) {
 	}
 }
 
-func (p *Parser) parseNumber(r rune) (any, ParseError) {
+func (p *Parser) parseNumber(r rune) (Value, ParseError) {
 	var (
 		buf []byte
 		err ParseError
@@ -269,7 +269,7 @@ func (p *Parser) parseNumber(r rune) (any, ParseError) {
 
 	buf, r, err = p.collectBytesWhile(unicode.IsDigit, buf)
 	if err.Cause != nil {
-		return nil, err
+		return NilValue, err
 	}
 
 	// Float.
@@ -279,31 +279,31 @@ func (p *Parser) parseNumber(r rune) (any, ParseError) {
 
 		buf, _, err = p.collectBytesWhile(unicode.IsDigit, buf)
 		if err.Cause != nil {
-			return nil, err
+			return NilValue, err
 		}
 
 		// Parse float.
 		f, parseFloatErr := strconv.ParseFloat(UnsafeString(buf), 64)
 		if parseFloatErr != nil {
-			return 0.0, ParseError{
+			return NilValue, ParseError{
 				Cause:    parseFloatErr,
 				Position: p.cursor,
 			}
 		}
 
-		return f, ParseError{}
+		return FloatValue(f), ParseError{}
 	}
 
 	// Integer.
 	i, parseIntErr := strconv.Atoi(UnsafeString(buf))
 	if parseIntErr != nil {
-		return 0, ParseError{
+		return NilValue, ParseError{
 			Cause:    parseIntErr,
 			Position: p.cursor,
 		}
 	}
 
-	return i, ParseError{}
+	return IntValue(i), ParseError{}
 }
 
 func (p *Parser) parseString(r rune) (string, ParseError) {

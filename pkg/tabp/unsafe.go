@@ -15,9 +15,3 @@ func UnsafeBytes(s string) []byte {
 func UnsafeString(b []byte) string {
 	return unsafe.String(unsafe.SliceData(b), len(b))
 }
-
-// unsafeAnySlice converts slice of []T to []any without allocation.
-func unsafeAnySlice(v []Value) []any {
-	sliceData := unsafe.SliceData(v)
-	return unsafe.Slice((*any)(sliceData), len(v))
-}

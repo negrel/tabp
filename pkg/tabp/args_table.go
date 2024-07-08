@@ -15,10 +15,10 @@ func NewArgsTable(tab ReadOnlyTable) ArgsTable {
 }
 
 func (at *ArgsTable) consumeArg(name Symbol) Value {
-	v := at.tab.Get(name)
-	if v == nil {
+	v := at.tab.Get(SymbolValue(name))
+	if v.Type == NilValueType {
 		at.seqStart++
-		v = at.tab.Get(at.seqStart)
+		v = at.tab.Get(IntValue(at.seqStart))
 	}
 
 	return v

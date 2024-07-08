@@ -27,9 +27,6 @@ func Sexpr(v any) string {
 	case string:
 		return strconv.Quote(value)
 
-	case EvalError:
-		return value.Error()
-
 	default:
 		panic(fmt.Errorf("SExpr not implemented for %T %v", value, value))
 	}

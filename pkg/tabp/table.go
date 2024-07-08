@@ -27,23 +27,25 @@ type ReadOnlyTable interface {
 // sequence. Entries with an integer key 'n' are stored in the slice (and part
 // of the sequence) if for i from 0 to n tab.Get(i) is not nil.
 type Table struct {
-	kv  map[Value]TableEntry
+	kv  map[any]TableEntry
 	seq []Value
 }
 
 // TableEntry define an entry in a Table.
 type TableEntry struct {
-	Key   any
-	Value any
+	Key   Value
+	Value Value
 }
 
 // Set inserts/updates value associated to given key. If provided value is nil,
 // entry is deleted.
 func (mt *Table) Set(k, v Value) {
-	arrayK, kIsInt := k.(int)
-	if kIsInt && arrayK >= 0 && arrayK <= len(mt.seq) {
-		mt.arraySet(arrayK, v)
-		return
+	if k.Type == IntValueType {
+		k := k.AsInt()
+		if k >= 0 && k <= len(mt.seq) {
+			mt.arraySet(k, v)
+			return
+		}
 	}
 
 	mt.mapSet(k, v)
@@ -52,10 +54,10 @@ func (mt *Table) Set(k, v Value) {
 // 0 <= k <= len(mt.array)
 func (mt *Table) arraySet(k int, v Value) {
 	// Delete.
-	if v == nil {
+	if v.Type == NilValueType {
 		// migrate element after k to map.
 		for i := k + 1; i < len(mt.seq); i++ {
-			mt.mapSetEntry(TableEntry{i, mt.seq[i]})
+			mt.mapSetEntry(TableEntry{IntValue(i), mt.seq[i]})
 		}
 
 		// Delete k.
@@ -81,7 +83,7 @@ func (mt *Table) arrayGet(k int) Value {
 
 func (mt *Table) mapSet(k Value, v Value) {
 	// Delete.
-	if v == nil {
+	if v.Type == NilValueType {
 		delete(mt.kv, k)
 		return
 	}
@@ -100,10 +102,10 @@ func (mt *Table) mapSet(k Value, v Value) {
 
 func (mt *Table) mapSetEntry(entry TableEntry) {
 	if mt.kv == nil {
-		mt.kv = make(map[Value]TableEntry)
+		mt.kv = make(map[any]TableEntry)
 	}
 
-	mt.kv[entry.Key] = entry
+	mt.kv[entry.Key.AsAny()] = entry
 }
 
 func (mt *Table) mapGet(k Value) Value {
@@ -115,15 +117,17 @@ func (mt *Table) mapGetEntry(k Value) TableEntry {
 		return TableEntry{}
 	}
 
-	return mt.kv[k]
+	return mt.kv[k.AsAny()]
 }
 
 // Get returns value associated with given key. A nil value is returned if key
 // is not found.
 func (mt *Table) Get(k Value) Value {
-	arrayK, kIsInt := k.(int)
-	if kIsInt && arrayK >= 0 && arrayK < len(mt.seq) {
-		return mt.arrayGet(arrayK)
+	if k.Type == IntValueType {
+		k := k.AsInt()
+		if k >= 0 && k < len(mt.seq) {
+			return mt.arrayGet(k)
+		}
 	}
 
 	return mt.mapGet(k)
@@ -131,8 +135,7 @@ func (mt *Table) Get(k Value) Value {
 
 // Has returns whether table contains given key.
 func (mt *Table) Has(k Value) bool {
-	arrayK, kIsInt := k.(int)
-	return kIsInt && mt.arrayHas(arrayK) || mt.mapHas(k)
+	return (k.Type == IntValueType && mt.arrayHas(k.AsInt())) || mt.mapHas(k)
 }
 
 func (mt *Table) arrayHas(k int) bool {
@@ -140,7 +143,7 @@ func (mt *Table) arrayHas(k int) bool {
 }
 
 func (mt *Table) mapHas(k Value) bool {
-	return mt.mapGet(k) != nil
+	return mt.mapGet(k).Type != NilValueType
 }
 
 // Append adds given value at the end of table's sequence. A sequence starts
@@ -164,7 +167,7 @@ func (mt *Table) Insert(k int, values ...Value) {
 
 func (mt *Table) insert(startK int, values ...Value) {
 	for i, value := range values {
-		if value == nil {
+		if value.Type == NilValueType {
 			continue
 		}
 		k := startK + i
@@ -186,13 +189,13 @@ func (mt *Table) arrayInsert(k int, v Value) {
 
 func (mt *Table) mapInsert(k int, v Value) {
 	// Entry exists, move next entry first.
-	if mt.Has(k) {
+	if mt.Has(IntValue(k)) {
 		mt.copyEntryTo(k, 1)
 	}
 
 	// Insert entry.
 	mt.mapSetEntry(TableEntry{
-		Key:   k,
+		Key:   IntValue(k),
 		Value: v,
 	})
 }
@@ -211,23 +214,23 @@ func (mt *Table) copyEntryTo(k, delta int) {
 			mt.arraySet(dstK, mt.arrayGet(k))
 		} else { // Copy value from sequence to map.
 			// Copy destination map value if any.
-			if mt.mapGet(dstK) != nil {
+			if mt.mapGet(IntValue(dstK)).Type != NilValueType {
 				mt.copyEntryTo(dstK, delta)
 			}
-			mt.mapSet(dstK, mt.arrayGet(k))
+			mt.mapSet(IntValue(dstK), mt.arrayGet(k))
 		}
 	} else {
 		if copyToSeq { // Copy value from map to sequence.
 			if !appendToSeq {
 				mt.copyEntryTo(dstK, delta)
 			}
-			mt.arraySet(dstK, mt.mapGet(k))
+			mt.arraySet(dstK, mt.mapGet(IntValue(k)))
 		} else { // Copy value from map to map.
 			// Copy destination map value if any.
-			if mt.mapGet(dstK) != nil {
+			if mt.mapGet(IntValue(dstK)).Type != NilValueType {
 				mt.copyEntryTo(dstK, delta)
 			}
-			mt.mapSet(dstK, mt.mapGet(k))
+			mt.mapSet(IntValue(dstK), mt.mapGet(IntValue(k)))
 		}
 	}
 }
@@ -256,8 +259,8 @@ func (mt *Table) IterSeq() iter.Seq2[int, Value] {
 // IterKVs returns an iter.Seq over table keys and values, sequence excluded.
 func (mt *Table) IterKVs() iter.Seq2[Value, Value] {
 	return func(yield func(k, v Value) bool) {
-		for k, v := range mt.kv {
-			if !yield(k, v.Value) {
+		for _, v := range mt.kv {
+			if !yield(v.Key, v.Value) {
 				break
 			}
 		}
@@ -268,7 +271,7 @@ func (mt *Table) IterKVs() iter.Seq2[Value, Value] {
 func (mt *Table) Iter() iter.Seq2[Value, Value] {
 	return func(yield func(k, v Value) bool) {
 		for i, v := range mt.IterSeq() {
-			if !yield(i, v) {
+			if !yield(IntValue(i), v) {
 				return
 			}
 		}
@@ -323,12 +326,12 @@ func (mt *Table) ToSExpr() string {
 
 func (mt *Table) fixSeqHole() {
 	for {
-		entry := mt.mapGetEntry(len(mt.seq))
-		if entry.Value == nil {
+		entry := mt.mapGetEntry(IntValue(len(mt.seq)))
+		if entry.Value.Type == NilValueType {
 			break
 		}
 
-		delete(mt.kv, len(mt.seq))
+		delete(mt.kv, IntValue(len(mt.seq)))
 		mt.seq = append(mt.seq, entry.Value)
 	}
 }
