@@ -1,38 +1,13 @@
-# `tabp` - 
+# `tabp` - A Lisp like language that operates on Table instead of list.
 
+Tabp is a programming language inspired by Lisp and Lua. It borrows its syntax
+from Lisp but uses table (similar to Lua tables) as it's only datastructure.
+It is called Tabp because unlike Lisp (List Processor), it operates on tables.
 
-
-## Why ?
-
-- What was your motivation?
-- Why did you build this project?
-- What problem does it solve?
-- What did you learn?
-- What makes your project stand out?
-
-If your project has a lot of features, consider adding a "Features" section and listing them here.
-
-## Getting started
-
-### Configuration
-
-Here is a table of configuration options:
-
-|  Option name  | Default value |           Description            |
-| :-----------: | :-----------: | :------------------------------: |
-| `OPTION_NAME` |    `VALUE`    |       Option description.        |
-
-### Building the project
-
-```shell
-make build
-```
-
-### Running the tests
-
-```shell
-make tests
-```
+Table is a datastructure that acts as a map and a vector/slice at the same time.
+All entries are stored in map except those that are part of the **sequence**.
+Table sequence define entries with an integer key `i` in range `0 to n` (exclusive)
+where `Table.Get(i) != nil` and `Table.Get(n) == nil`.
 
 ## Contributing
 
