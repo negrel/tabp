@@ -163,6 +163,9 @@ func fnPrintf(_ *Env, tab ReadOnlyTable) Value {
 	}
 
 	args := unsafeAnySlice(tab.Seq()[2:])
+	for i, v := range args {
+		args[i] = Sexpr(v)
+	}
 	fmt.Printf(format, args...)
 
 	return nil

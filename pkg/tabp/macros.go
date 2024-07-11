@@ -4,6 +4,51 @@ func macroQuote(_ *Env, tab ReadOnlyTable) Value {
 	return tab.Get(1)
 }
 
+func macroQuasiQuote(env *Env, tab ReadOnlyTable) Value {
+	qquoted := tab.Get(1)
+	if tab, isTab := qquoted.(*Table); isTab {
+		qquoted = macroQuasiQuoteRecursive(env, tab)
+	}
+
+	return qquoted
+}
+
+func macroQuasiQuoteRecursive(env *Env, tab *Table) Value {
+	if symbol, isSymbol := tab.Get(0).(Symbol); isSymbol {
+		if symbol == Symbol("UNQUOTE") {
+			unquoted := env.Eval(tab.Get(1))
+			if t, isTab := unquoted.(*Table); isTab {
+				tab = t
+			} else {
+				return unquoted
+			}
+		}
+	}
+
+	for k, v := range tab.Iter() {
+		var (
+			newK = k
+			newV = v
+		)
+
+		if tabK, isTab := k.(*Table); isTab {
+			newK = macroQuasiQuoteRecursive(env, tabK)
+		}
+
+		if tabV, isTab := v.(*Table); isTab {
+			newV = macroQuasiQuoteRecursive(env, tabV)
+		}
+
+		// Update table.
+		if newK != k {
+			tab.Set(k, nil)
+		}
+		tab.Set(newK, newV)
+	}
+
+	return tab
+}
+
 func macroDefun(env *Env, tab ReadOnlyTable) Value {
 	name, isSymbol := tab.Get(1).(Symbol)
 	if !isSymbol {

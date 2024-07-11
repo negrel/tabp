@@ -28,6 +28,7 @@ func Eval(r io.Reader) Value {
 
 	// Macros.
 	p.env.Defmacro("QUOTE", macroQuote)
+	p.env.Defmacro("QUASIQUOTE", macroQuasiQuote)
 	p.env.Defmacro("DEFUN", macroDefun)
 	p.env.Defmacro("DEFVAR", macroDefvar)
 	p.env.Defmacro("IF", macroIf)
